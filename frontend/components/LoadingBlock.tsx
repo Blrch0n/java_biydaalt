@@ -2,9 +2,9 @@ type LoadingBlockProps = {
   label?: string;
 };
 
-export function LoadingBlock({ label = "Loading..." }: LoadingBlockProps) {
+export function LoadingBlock({ label = "Ачаалж байна..." }: LoadingBlockProps) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+    <div className="paper muted-copy px-4 py-3 text-sm">
       {label}
     </div>
   );

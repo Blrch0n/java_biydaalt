@@ -11,6 +11,8 @@ public class Student {
 	@Id
 	private String id;
 
+	private String userId;
+
 	@NotBlank(message = "Full name is required")
 	private String fullName;
 
@@ -24,8 +26,9 @@ public class Student {
 	public Student() {
 	}
 
-	public Student(String id, String fullName, String email, String batch) {
+	public Student(String id, String userId, String fullName, String email, String batch) {
 		this.id = id;
+		this.userId = userId;
 		this.fullName = fullName;
 		this.email = email;
 		this.batch = batch;
@@ -37,6 +40,14 @@ public class Student {
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public String getUserId() {
+		return userId;
+	}
+
+	public void setUserId(String userId) {
+		this.userId = userId;
 	}
 
 	public String getFullName() {

@@ -11,4 +11,12 @@ public interface EnrollmentRepository extends MongoRepository<Enrollment, String
 	List<Enrollment> findByStudentId(String studentId);
 
 	List<Enrollment> findByCourseId(String courseId);
+
+	List<Enrollment> findAllByOrderByProgressDesc();
+
+	List<Enrollment> findAllByOrderByEnrolledAtDesc();
+
+	List<Enrollment> findByStudentIdOrderByProgressDesc(String studentId);
+
+	List<Enrollment> findByStudentIdOrderByEnrolledAtDesc(String studentId);
 }

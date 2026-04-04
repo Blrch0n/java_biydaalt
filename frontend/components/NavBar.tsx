@@ -2,26 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/students", label: "Students" },
-  { href: "/courses", label: "Courses" },
-  { href: "/enroll", label: "Enroll" },
-  { href: "/enrollments", label: "Enrollments" },
+const publicLinks = [
+  { href: "/login", label: "Нэвтрэх" },
+  { href: "/signup", label: "Бүртгүүлэх" },
 ];
 
 export function NavBar() {
   const pathname = usePathname();
+  const { isAuthenticated, user, logout } = useAuth();
+
+  const links = isAuthenticated
+    ? [
+        { href: "/", label: "Нүүр" },
+        { href: "/courses", label: "Хичээлүүд" },
+        { href: "/enrollments", label: "Элсэлт" },
+        ...(user?.role === "TEACHER"
+          ? [
+              { href: "/students", label: "Оюутнууд" },
+              { href: "/instructors", label: "Багш нар" },
+              { href: "/enroll", label: "Бүртгэх" },
+            ]
+          : []),
+      ]
+    : publicLinks;
 
   return (
-    <nav className="border-b border-slate-200 bg-white/90 backdrop-blur">
+    <nav className="top-nav">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="font-[family-name:var(--font-poppins)] text-lg font-semibold text-slate-900"
+          className="brand-title text-lg font-semibold sm:text-xl"
         >
-          Online Learning System
+          Сургуулийн LMS
         </Link>
         <ul className="flex flex-wrap items-center gap-2 sm:gap-3">
           {links.map((link) => {
@@ -34,10 +48,10 @@ export function NavBar() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className={`rounded-md px-3 py-1.5 text-sm transition ${
+                  className={`nav-pill ${
                     isActive
-                      ? "bg-sky-100 text-sky-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      ? "nav-pill--active"
+                      : "nav-pill--idle"
                   }`}
                 >
                   {link.label}
@@ -45,6 +59,20 @@ export function NavBar() {
               </li>
             );
           })}
+          {isAuthenticated ? (
+            <li className="ml-1 flex items-center gap-2">
+              <span className="text-xs font-medium text-[#0f2434] sm:text-sm">
+                {user?.fullName} ({user?.role === "TEACHER" ? "Багш" : "Сурагч"})
+              </span>
+              <button
+                type="button"
+                className="nav-pill nav-pill--idle"
+                onClick={logout}
+              >
+                Гарах
+              </button>
+            </li>
+          ) : null}
         </ul>
       </div>
     </nav>

@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend: Online Learning UI
 
-## Getting Started
+Next.js App Router frontend for the upgraded Spring Boot backend. This UI now includes JWT login/signup flow, route protection, role-based navigation, and teacher/student specific pages.
 
-First, run the development server:
+## Tech Stack
+
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- Fetch-based API client with centralized auth/error handling
+
+## Environment
+
+Create `.env.local` (or copy from `.env.local.example`):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+App runs at `http://localhost:3000`.
 
-## Learn More
+## Authentication Flow
 
-To learn more about Next.js, take a look at the following resources:
+- Public routes: `/login`, `/signup`
+- Protected routes: all others
+- Token storage: `localStorage` key `onlinelearning_token`
+- On app load: frontend calls `/api/auth/me` to restore session
+- On `401`: token is cleared and user is redirected to login
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Roles and UX
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `TEACHER`
+	- Full management routes: students, instructors, enrollment creation, enrollment progress updates
+	- Can create/delete students, instructors, and courses
+	- Can add lessons to courses
+- `STUDENT`
+	- Read-only access to course list and personal enrollments
+	- No teacher management controls shown in UI
 
-## Deploy on Vercel
+## Main Routes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `/` dashboard with quick stats from `/api/dashboard/stats`
+- `/students` teacher-only student management
+- `/instructors` teacher-only instructor management
+- `/courses` role-based course browsing/management
+- `/enroll` teacher-only enrollment creation
+- `/enrollments` teacher sees all, student sees own records from `/api/enrollments`
+- `/login` signin
+- `/signup` account creation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Key Files
+
+- `context/AuthContext.tsx`: auth state, restore/login/signup/logout
+- `components/AuthGuard.tsx`: public/protected route guard
+- `components/NavBar.tsx`: role-aware menu and logout
+- `lib/api.ts`: all endpoint methods and auth header handling
+- `lib/auth.ts`: token storage helpers
+- `types/index.ts`: shared API/domain/auth types
+
+## Scripts
+
+- `npm run dev` start development server
+- `npm run lint` run ESLint
+- `npm run build` production build

@@ -11,6 +11,8 @@ public class Instructor {
 	@Id
 	private String id;
 
+	private String userId;
+
 	@NotBlank(message = "Full name is required")
 	private String fullName;
 
@@ -24,8 +26,9 @@ public class Instructor {
 	public Instructor() {
 	}
 
-	public Instructor(String id, String fullName, String email, String specialization) {
+	public Instructor(String id, String userId, String fullName, String email, String specialization) {
 		this.id = id;
+		this.userId = userId;
 		this.fullName = fullName;
 		this.email = email;
 		this.specialization = specialization;
@@ -37,6 +40,14 @@ public class Instructor {
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public String getUserId() {
+		return userId;
+	}
+
+	public void setUserId(String userId) {
+		this.userId = userId;
 	}
 
 	public String getFullName() {

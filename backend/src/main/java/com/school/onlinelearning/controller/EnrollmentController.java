@@ -1,10 +1,15 @@
 package com.school.onlinelearning.controller;
 
+import com.school.onlinelearning.dto.enrollment.EnrollmentResponse;
 import com.school.onlinelearning.model.Enrollment;
+import com.school.onlinelearning.security.AuthenticatedUser;
 import com.school.onlinelearning.service.EnrollmentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,8 +20,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/enrollments")
@@ -28,32 +31,42 @@ public class EnrollmentController {
 		this.enrollmentService = enrollmentService;
 	}
 
+	@PreAuthorize("hasAnyRole('STUDENT','TEACHER')")
 	@GetMapping
-	public ResponseEntity<List<Enrollment>> getAllEnrollments() {
-		return ResponseEntity.ok(enrollmentService.getAllEnrollments());
+	public ResponseEntity<List<EnrollmentResponse>> getAllEnrollments(
+			@AuthenticationPrincipal AuthenticatedUser currentUser,
+			@RequestParam(required = false) String sort
+	) {
+		return ResponseEntity.ok(enrollmentService.getAllEnrollments(currentUser, sort));
 	}
 
+	@PreAuthorize("hasAnyRole('STUDENT','TEACHER')")
+	@GetMapping("/{id}")
+	public ResponseEntity<EnrollmentResponse> getEnrollmentById(
+			@PathVariable String id,
+			@AuthenticationPrincipal AuthenticatedUser currentUser
+	) {
+		return ResponseEntity.ok(enrollmentService.getEnrollmentById(id, currentUser));
+	}
+
+	@PreAuthorize("hasRole('TEACHER')")
 	@PostMapping
-	public ResponseEntity<?> createEnrollment(@Valid @RequestBody Enrollment enrollment) {
-		try {
-			Enrollment createdEnrollment = enrollmentService.createEnrollment(enrollment);
-			return ResponseEntity.status(HttpStatus.CREATED).body(createdEnrollment);
-		} catch (NoSuchElementException ex) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
-		} catch (IllegalArgumentException ex) {
-			return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
-		}
+	public ResponseEntity<EnrollmentResponse> createEnrollment(@Valid @RequestBody Enrollment enrollment) {
+		EnrollmentResponse createdEnrollment = enrollmentService.createEnrollment(enrollment);
+		return ResponseEntity.status(HttpStatus.CREATED).body(createdEnrollment);
 	}
 
+	@PreAuthorize("hasRole('TEACHER')")
 	@PatchMapping("/{id}/progress")
-	public ResponseEntity<?> updateProgress(@PathVariable String id, @RequestParam("value") double value) {
-		try {
-			Enrollment updatedEnrollment = enrollmentService.updateProgress(id, value);
-			return ResponseEntity.ok(updatedEnrollment);
-		} catch (NoSuchElementException ex) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
-		} catch (IllegalArgumentException ex) {
-			return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
-		}
+	public ResponseEntity<EnrollmentResponse> updateProgress(@PathVariable String id, @RequestParam("value") double value) {
+		EnrollmentResponse updatedEnrollment = enrollmentService.updateProgress(id, value);
+		return ResponseEntity.ok(updatedEnrollment);
+	}
+
+	@PreAuthorize("hasRole('TEACHER')")
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> deleteEnrollment(@PathVariable String id) {
+		enrollmentService.deleteEnrollment(id);
+		return ResponseEntity.noContent().build();
 	}
 }

@@ -6,10 +6,10 @@ type StatusMessageProps = {
 export function StatusMessage({ type, message }: StatusMessageProps) {
   const classes =
     type === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border-rose-200 bg-rose-50 text-rose-700";
+      ? "border border-emerald-700/20 bg-emerald-50 text-emerald-800"
+      : "border border-rose-800/20 bg-rose-50 text-rose-800";
 
   return (
-    <div className={`rounded-lg border px-3 py-2 text-sm ${classes}`}>{message}</div>
+    <div className={`rounded-xl px-3 py-2 text-sm ${classes}`}>{message}</div>
   );
 }

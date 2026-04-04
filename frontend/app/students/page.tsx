@@ -4,7 +4,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusMessage } from "@/components/StatusMessage";
-import { createStudent, getStudents } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { createStudent, deleteStudent, getStudents } from "@/lib/api";
 import { Student } from "@/types";
 
 const initialForm = {
@@ -14,6 +15,7 @@ const initialForm = {
 };
 
 export default function StudentsPage() {
+  const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
@@ -29,15 +31,33 @@ export default function StudentsPage() {
       const data = await getStudents();
       setStudents(data);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load students");
+      setError(loadError instanceof Error ? loadError.message : "Оюутнуудыг ачаалж чадсангүй.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void loadStudents();
-  }, []);
+    if (user?.role === "TEACHER") {
+      void loadStudents();
+      return;
+    }
+
+    setLoading(false);
+  }, [user?.role]);
+
+  async function onDeleteStudent(id: string) {
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await deleteStudent(id);
+      setSuccess("Оюутныг амжилттай устгалаа.");
+      await loadStudents();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Оюутан устгах үед алдаа гарлаа.");
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,12 +69,12 @@ export default function StudentsPage() {
     const batch = form.batch.trim();
 
     if (!fullName || !email || !batch) {
-      setError("Please complete all student fields.");
+      setError("Оюутны бүх талбарыг бөглөнө үү.");
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Please enter a valid email address.");
+      setError("Зөв имэйл хаяг оруулна уу.");
       return;
     }
 
@@ -62,11 +82,11 @@ export default function StudentsPage() {
 
     try {
       await createStudent({ fullName, email, batch });
-      setSuccess("Student created successfully.");
+      setSuccess("Оюутны мэдээллийг амжилттай нэмлээ.");
       setForm(initialForm);
       await loadStudents();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Failed to create student");
+      setError(submitError instanceof Error ? submitError.message : "Оюутан нэмэх үед алдаа гарлаа.");
     } finally {
       setSubmitting(false);
     }
@@ -75,42 +95,47 @@ export default function StudentsPage() {
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Students"
-        description="Manage student records and add new students to your batch."
+        title="Оюутнууд"
+        description="Оюутны бүртгэлийг удирдаж, шинэ оюутан нэмнэ."
       />
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="font-[family-name:var(--font-poppins)] text-lg font-semibold text-slate-900">
-          Create Student
-        </h2>
+      {user?.role !== "TEACHER" ? (
+        <div className="paper p-5">
+          <StatusMessage type="error" message="Энэ хэсэг зөвхөн багш эрхтэй хэрэглэгчид нээлттэй." />
+        </div>
+      ) : null}
+
+      {user?.role === "TEACHER" ? (
+      <div className="paper p-5">
+        <h2 className="section-title text-lg font-semibold">Оюутан Нэмэх</h2>
         <form onSubmit={onSubmit} className="mt-4 grid gap-3 sm:grid-cols-3">
           <input
             type="text"
-            placeholder="Full name"
+            placeholder="Овог нэр"
             value={form.fullName}
             onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-sky-200 focus:ring"
+            className="field"
           />
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Имэйл"
             value={form.email}
             onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-sky-200 focus:ring"
+            className="field"
           />
           <input
             type="text"
-            placeholder="Batch"
+            placeholder="Анги"
             value={form.batch}
             onChange={(event) => setForm((prev) => ({ ...prev, batch: event.target.value }))}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-sky-200 focus:ring"
+            className="field"
           />
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
+            className="btn-primary"
           >
-            {submitting ? "Creating..." : "Create Student"}
+            {submitting ? "Нэмж байна..." : "Оюутан Нэмэх"}
           </button>
         </form>
         <div className="mt-3 space-y-2">
@@ -118,34 +143,43 @@ export default function StudentsPage() {
           {success ? <StatusMessage type="success" message={success} /> : null}
         </div>
       </div>
+      ) : null}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="font-[family-name:var(--font-poppins)] text-lg font-semibold text-slate-900">
-          Student List
-        </h2>
+      <div className="paper p-5">
+        <h2 className="section-title text-lg font-semibold">Оюутны Жагсаалт</h2>
         <div className="mt-4">
-          {loading ? <LoadingBlock label="Loading students..." /> : null}
+          {loading ? <LoadingBlock label="Оюутнуудыг ачаалж байна..." /> : null}
           {!loading && students.length === 0 ? (
-            <p className="text-sm text-slate-600">No students yet.</p>
+            <p className="muted-copy text-sm">Одоогоор оюутан бүртгэгдээгүй байна.</p>
           ) : null}
           {!loading && students.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-slate-600">
-                    <th className="py-2 pr-4">ID</th>
-                    <th className="py-2 pr-4">Name</th>
-                    <th className="py-2 pr-4">Email</th>
-                    <th className="py-2">Batch</th>
+                  <tr className="border-b border-amber-900/15 text-left text-slate-600">
+                    <th className="py-2 pr-4">Дугаар</th>
+                    <th className="py-2 pr-4">Нэр</th>
+                    <th className="py-2 pr-4">Имэйл</th>
+                    <th className="py-2">Анги</th>
+                    <th className="py-2 text-right">Үйлдэл</th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.map((student) => (
-                    <tr key={student.id} className="border-b border-slate-100 align-top">
+                    <tr key={student.id} className="border-b border-amber-900/10 align-top">
                       <td className="py-2 pr-4 text-slate-500">{student.id}</td>
                       <td className="py-2 pr-4 font-medium text-slate-800">{student.fullName}</td>
                       <td className="py-2 pr-4">{student.email}</td>
                       <td className="py-2">{student.batch}</td>
+                      <td className="py-2 text-right">
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => void onDeleteStudent(student.id)}
+                        >
+                          Устгах
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

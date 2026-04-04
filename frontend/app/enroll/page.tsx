@@ -4,10 +4,12 @@ import { FormEvent, useEffect, useState } from "react";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusMessage } from "@/components/StatusMessage";
+import { useAuth } from "@/context/AuthContext";
 import { createEnrollment, getCourses, getStudents } from "@/lib/api";
 import { Course, Student } from "@/types";
 
 export default function EnrollPage() {
+  const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [studentId, setStudentId] = useState("");
@@ -39,15 +41,20 @@ export default function EnrollPage() {
         setCourseId((current) => current || coursesData[0].id);
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load form data");
+      setError(loadError instanceof Error ? loadError.message : "Формын мэдээллийг ачаалж чадсангүй.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    if (user?.role === "TEACHER") {
+      void loadData();
+      return;
+    }
+
+    setLoading(false);
+  }, [user?.role]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,14 +62,14 @@ export default function EnrollPage() {
     setSuccess(null);
 
     if (!studentId || !courseId) {
-      setError("Please select both student and course.");
+      setError("Оюутан болон хичээлээ сонгоно уу.");
       return;
     }
 
     const parsedProgress = Number(progress);
 
     if (Number.isNaN(parsedProgress) || parsedProgress < 0 || parsedProgress > 100) {
-      setError("Progress must be between 0 and 100.");
+      setError("Ахиц 0-100 хооронд байна.");
       return;
     }
 
@@ -74,11 +81,11 @@ export default function EnrollPage() {
         courseId,
         progress: parsedProgress,
       });
-      setSuccess("Enrollment created successfully.");
+      setSuccess("Элсэлтийг амжилттай үүсгэлээ.");
       setProgress("0");
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : "Failed to create enrollment",
+        submitError instanceof Error ? submitError.message : "Элсэлт үүсгэх үед алдаа гарлаа.",
       );
     } finally {
       setSubmitting(false);
@@ -88,21 +95,29 @@ export default function EnrollPage() {
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Enroll Student"
-        description="Pick a student and course to create a new enrollment."
+        title="Оюутан Бүртгэх"
+        description="Оюутан болон хичээл сонгож шинэ элсэлт үүсгэнэ."
       />
 
-      {loading ? <LoadingBlock label="Loading students and courses..." /> : null}
+      {user?.role !== "TEACHER" ? (
+        <div className="paper p-5">
+          <StatusMessage type="error" message="Энэ хэсэг зөвхөн багш эрхтэй хэрэглэгчид нээлттэй." />
+        </div>
+      ) : null}
 
-      {!loading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {user?.role === "TEACHER" && loading ? (
+        <LoadingBlock label="Оюутан, хичээлийн мэдээлэл ачаалж байна..." />
+      ) : null}
+
+      {!loading && user?.role === "TEACHER" ? (
+        <div className="paper p-5">
           <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm text-slate-700">
-              Student
+              Оюутан
               <select
                 value={studentId}
                 onChange={(event) => setStudentId(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 outline-none ring-sky-200 focus:ring"
+                className="field"
               >
                 {students.map((student) => (
                   <option key={student.id} value={student.id}>
@@ -113,11 +128,11 @@ export default function EnrollPage() {
             </label>
 
             <label className="flex flex-col gap-1 text-sm text-slate-700">
-              Course
+              Хичээл
               <select
                 value={courseId}
                 onChange={(event) => setCourseId(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 outline-none ring-sky-200 focus:ring"
+                className="field"
               >
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
@@ -128,29 +143,29 @@ export default function EnrollPage() {
             </label>
 
             <label className="flex flex-col gap-1 text-sm text-slate-700 sm:col-span-2">
-              Initial Progress (optional)
+              Эхний Ахиц (заавал биш)
               <input
                 type="number"
                 min={0}
                 max={100}
                 value={progress}
                 onChange={(event) => setProgress(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 outline-none ring-sky-200 focus:ring"
+                className="field"
               />
             </label>
 
             <button
               type="submit"
               disabled={submitting || students.length === 0 || courses.length === 0}
-              className="w-fit rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
+              className="btn-primary w-fit"
             >
-              {submitting ? "Enrolling..." : "Enroll Student"}
+              {submitting ? "Бүртгэж байна..." : "Оюутан Бүртгэх"}
             </button>
           </form>
 
           {students.length === 0 || courses.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-600">
-              You need at least one student and one course before enrolling.
+            <p className="muted-copy mt-3 text-sm">
+              Бүртгэл хийхийн өмнө дор хаяж нэг оюутан, нэг хичээл байх шаардлагатай.
             </p>
           ) : null}
 
