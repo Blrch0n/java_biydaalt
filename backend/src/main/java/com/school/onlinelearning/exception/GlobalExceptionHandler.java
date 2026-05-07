@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(DuplicateResourceException.class)
 	public ResponseEntity<ApiErrorResponse> handleDuplicate(DuplicateResourceException ex, HttpServletRequest request) {
-		return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
+		return build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI());
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

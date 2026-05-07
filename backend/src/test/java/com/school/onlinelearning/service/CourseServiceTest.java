@@ -22,7 +22,7 @@ class CourseServiceTest {
 	private CourseRepository courseRepository;
 
 	@InjectMocks
-	private CourseService courseService;
+	private CourseServiceImpl courseService;
 
 	@Test
 	void addLessonThrowsWhenLessonTitleAlreadyExists() {

@@ -1,9 +1,10 @@
 package com.school.onlinelearning.repository;
 
 import com.school.onlinelearning.model.Student;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface StudentRepository extends MongoRepository<Student, String> {
@@ -13,5 +14,5 @@ public interface StudentRepository extends MongoRepository<Student, String> {
 
 	Optional<Student> findByUserId(String userId);
 
-	List<Student> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String fullName, String email);
+	Page<Student> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String fullName, String email, Pageable pageable);
 }

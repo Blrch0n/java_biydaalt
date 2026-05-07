@@ -44,19 +44,12 @@ public class AuthService {
 	}
 
 	public UserResponse signup(SignupRequest request) {
-		String email = request.getEmail().trim().toLowerCase();
+		String email = normalizeEmail(request.getEmail());
 		if (userRepository.existsByEmail(email)) {
 			throw new DuplicateResourceException("User email already exists: " + email);
 		}
 
-		User user = new User();
-		user.setFullName(request.getFullName().trim());
-		user.setEmail(email);
-		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-		user.setRole(request.getRole());
-		user.setCreatedAt(LocalDateTime.now());
-
-		User saved = userRepository.save(user);
+		User saved = userRepository.save(buildUserForSignup(request, email));
 
 		if (saved.getRole() == UserRole.STUDENT) {
 			ensureStudentProfile(saved);
@@ -68,21 +61,13 @@ public class AuthService {
 	}
 
 	public AuthResponse login(LoginRequest request) {
-		String email = request.getEmail().trim().toLowerCase();
+		String email = normalizeEmail(request.getEmail());
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
-		if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-			throw new IllegalArgumentException("Invalid email or password");
-		}
+		validatePassword(request.getPassword(), user.getPasswordHash());
 
-		AuthenticatedUser authenticatedUser = new AuthenticatedUser(
-				user.getId(),
-				user.getEmail(),
-				user.getPasswordHash(),
-				user.getFullName(),
-				user.getRole()
-		);
+		AuthenticatedUser authenticatedUser = toAuthenticatedUser(user);
 		String token = jwtService.generateToken(authenticatedUser);
 		return new AuthResponse(token, toUserResponse(user));
 	}
@@ -95,6 +80,36 @@ public class AuthService {
 
 	private UserResponse toUserResponse(User user) {
 		return new UserResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole());
+	}
+
+	private User buildUserForSignup(SignupRequest request, String email) {
+		User user = new User();
+		user.setFullName(request.getFullName().trim());
+		user.setEmail(email);
+		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+		user.setRole(request.getRole());
+		user.setCreatedAt(LocalDateTime.now());
+		return user;
+	}
+
+	private AuthenticatedUser toAuthenticatedUser(User user) {
+		return new AuthenticatedUser(
+				user.getId(),
+				user.getEmail(),
+				user.getPasswordHash(),
+				user.getFullName(),
+				user.getRole()
+		);
+	}
+
+	private void validatePassword(String rawPassword, String storedPasswordHash) {
+		if (!passwordEncoder.matches(rawPassword, storedPasswordHash)) {
+			throw new IllegalArgumentException("Invalid email or password");
+		}
+	}
+
+	private String normalizeEmail(String email) {
+		return email.trim().toLowerCase();
 	}
 
 	private void ensureStudentProfile(User user) {

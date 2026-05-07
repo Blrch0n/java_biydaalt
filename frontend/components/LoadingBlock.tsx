@@ -4,8 +4,9 @@ type LoadingBlockProps = {
 
 export function LoadingBlock({ label = "Ачаалж байна..." }: LoadingBlockProps) {
   return (
-    <div className="paper muted-copy px-4 py-3 text-sm">
-      {label}
+    <div className="paper flex items-center justify-center gap-4 px-5 py-5">
+      <span className="loading-spinner" aria-hidden="true" />
+      <span className="text-md font-bold text-black uppercase">{label}</span>
     </div>
   );
 }

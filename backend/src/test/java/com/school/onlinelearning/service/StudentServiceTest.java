@@ -1,7 +1,7 @@
 package com.school.onlinelearning.service;
 
 import com.school.onlinelearning.exception.DuplicateResourceException;
-import com.school.onlinelearning.model.Student;
+import com.school.onlinelearning.dto.request.StudentRequestDTO;
 import com.school.onlinelearning.repository.StudentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,12 +19,11 @@ class StudentServiceTest {
 	private StudentRepository studentRepository;
 
 	@InjectMocks
-	private StudentService studentService;
+	private StudentServiceImpl studentService;
 
 	@Test
 	void createStudentThrowsWhenEmailAlreadyExists() {
-		Student student = new Student();
-		student.setEmail("test@example.com");
+		StudentRequestDTO student = new StudentRequestDTO("Test User", "test@example.com", "CS-2024");
 
 		when(studentRepository.existsByEmail("test@example.com")).thenReturn(true);
 

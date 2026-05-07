@@ -1,5 +1,14 @@
 export type UserRole = "STUDENT" | "TEACHER";
 
+export type PageResponse<T> = {
+  content: T[];
+  pageNo: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+};
+
 export type User = {
   id: string;
   fullName: string;
@@ -13,6 +22,50 @@ export type Student = {
   fullName: string;
   email: string;
   batch: string;
+  xp: number;
+};
+
+export type Assignment = {
+  id: string;
+  courseId: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  maxScore: number;
+};
+
+export type Submission = {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  pdfFilePath: string;
+  originalFileName: string;
+  score: number | null;
+  feedback: string | null;
+  submittedAt: string;
+};
+
+export type Question = {
+  text: string;
+  options: string[];
+  correctAnswer: string;
+};
+
+export type Quiz = {
+  id: string;
+  courseId: string;
+  title: string;
+  questions: Question[];
+};
+
+export type QuizAttempt = {
+  id: string;
+  quizId: string;
+  studentId: string;
+  answers: Record<number, string>;
+  score: number;
+  totalQuestions: number;
+  attemptedAt: string;
 };
 
 export type Instructor = {

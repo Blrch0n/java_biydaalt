@@ -1,76 +1,68 @@
 package com.school.onlinelearning.model;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/**
+ * Represents an instructor who teaches courses in the system.
+ *
+ * OOP Pillars demonstrated:
+ *   - INHERITANCE   : extends Person, inheriting id, userId, fullName, email
+ *   - ENCAPSULATION : specialization field is private with public getter/setter
+ *   - POLYMORPHISM  : overrides the abstract describe() from Person with
+ *                     instructor-specific content — same method name as Student
+ *                     but completely different behaviour
+ */
 @Document(collection = "instructors")
-public class Instructor {
+public class Instructor extends Person implements Describable {
 
-	@Id
-	private String id;
+    @NotBlank(message = "Specialization is required")
+    private String specialization;
 
-	private String userId;
+    // ------------------------------------------------------------------ //
+    //  Constructors
+    // ------------------------------------------------------------------ //
 
-	@NotBlank(message = "Full name is required")
-	private String fullName;
+    public Instructor() {
+        super();
+    }
 
-	@NotBlank(message = "Email is required")
-	@Email(message = "Email must be valid")
-	private String email;
+    public Instructor(String id, String userId, String fullName, String email, String specialization) {
+        super(id, userId, fullName, email);
+        this.specialization = specialization;
+    }
 
-	@NotBlank(message = "Specialization is required")
-	private String specialization;
+    // ------------------------------------------------------------------ //
+    //  Polymorphism — overrides the abstract describe() from Person
+    // ------------------------------------------------------------------ //
 
-	public Instructor() {
-	}
+    /**
+     * Returns an instructor-specific description.
+     * Demonstrates POLYMORPHISM: the same describe() contract defined in
+     * Person is fulfilled here with instructor-specific content — the
+     * runtime type determines which describe() is called.
+     */
+    @Override
+    public String describe() {
+        return "Instructor [" + getFullName() + "] specializing in " + specialization
+                + " | email: " + getEmail();
+    }
 
-	public Instructor(String id, String userId, String fullName, String email, String specialization) {
-		this.id = id;
-		this.userId = userId;
-		this.fullName = fullName;
-		this.email = email;
-		this.specialization = specialization;
-	}
+    @Override
+    public String toString() {
+        return "Instructor{id='" + getId() + "', fullName='" + getFullName()
+                + "', email='" + getEmail() + "', specialization='" + specialization + "'}";
+    }
 
-	public String getId() {
-		return id;
-	}
+    // ------------------------------------------------------------------ //
+    //  Getters & Setters  (Encapsulation)
+    // ------------------------------------------------------------------ //
 
-	public void setId(String id) {
-		this.id = id;
-	}
+    public String getSpecialization() {
+        return specialization;
+    }
 
-	public String getUserId() {
-		return userId;
-	}
-
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
-
-	public String getFullName() {
-		return fullName;
-	}
-
-	public void setFullName(String fullName) {
-		this.fullName = fullName;
-	}
-
-	public String getEmail() {
-		return email;
-	}
-
-	public void setEmail(String email) {
-		this.email = email;
-	}
-
-	public String getSpecialization() {
-		return specialization;
-	}
-
-	public void setSpecialization(String specialization) {
-		this.specialization = specialization;
-	}
+    public void setSpecialization(String specialization) {
+        this.specialization = specialization;
+    }
 }

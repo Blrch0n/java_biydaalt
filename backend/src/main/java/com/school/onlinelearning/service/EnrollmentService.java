@@ -74,11 +74,6 @@ public class EnrollmentService {
 			throw new DuplicateResourceException("Student is already enrolled in this course");
 		}
 
-		if (enrollment.getProgress() < 0 || enrollment.getProgress() > 100) {
-			throw new IllegalArgumentException("Progress must be between 0 and 100");
-		}
-
-		enrollment.setProgress(enrollment.getProgress());
 		enrollment.setEnrolledAt(LocalDateTime.now());
 
 		Enrollment saved = enrollmentRepository.save(enrollment);

@@ -1,369 +1,166 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useState, FormEvent } from "react";
+import useSWR from "swr";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuth } from "@/context/AuthContext";
-import { addLesson, createCourse, deleteCourse, getCourses, getInstructors } from "@/lib/api";
-import { Course, Instructor } from "@/types";
-
-const initialCourseForm = {
-  title: "",
-  description: "",
-  level: "BEGINNER",
-  price: "0",
-  instructorId: "",
-};
+import { api } from "@/lib/api";
+import { CourseForm } from "@/components/forms/CourseForm";
+import { Pagination } from "@/components/Pagination";
 
 export default function CoursesPage() {
   const { user } = useAuth();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const [page, setPage] = useState(0);
   const [filterLevel, setFilterLevel] = useState("ALL");
-  const [courseForm, setCourseForm] = useState(initialCourseForm);
-  const [lessonForms, setLessonForms] = useState<
-    Record<string, { title: string; durationMinutes: string }>
-  >({});
-  const [loading, setLoading] = useState(true);
-  const [submittingCourse, setSubmittingCourse] = useState(false);
+  const [lessonForms, setLessonForms] = useState<Record<string, { title: string; durationMinutes: string }>>({});
   const [submittingLessonFor, setSubmittingLessonFor] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  async function loadCourses() {
-    setError(null);
-    setLoading(true);
+  // Fetch courses with pagination
+  const { data: coursesData, error: coursesError, mutate: mutateCourses, isLoading: loadingCourses } = useSWR(
+    `/api/courses?page=${page}&level=${filterLevel === "ALL" ? "" : filterLevel}`,
+    () => api.getCourses(page, 10, filterLevel === "ALL" ? undefined : filterLevel)
+  );
 
-    try {
-      const [coursesData, instructorsData] = await Promise.all([getCourses(), getInstructors()]);
-      setCourses(coursesData);
-      setInstructors(instructorsData);
+  // Fetch instructors for displaying names instead of IDs
+  const { data: instructorsData } = useSWR(
+    "/api/instructors?size=100", 
+    () => api.getInstructors(0, 100)
+  );
+  const instructors = instructorsData?.content || [];
 
-      if (instructorsData.length > 0) {
-        setCourseForm((prev) => ({
-          ...prev,
-          instructorId: prev.instructorId || instructorsData[0].id,
-        }));
-      }
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Хичээлүүдийг ачаалж чадсангүй.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const courses = coursesData?.content || [];
 
-  useEffect(() => {
-    void loadCourses();
-  }, []);
+  const levels = ["ALL", "BEGINNER", "INTERMEDIATE", "ADVANCED"]; // Predefined for simplicity since we paginate
 
   async function onDeleteCourse(courseId: string) {
-    setError(null);
-    setSuccess(null);
-
+    if (!window.confirm("Энэ хичээлийг устгахдаа итгэлтэй байна уу?")) return;
     try {
-      await deleteCourse(courseId);
-      setSuccess("Хичээлийг амжилттай устгалаа.");
-      await loadCourses();
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Хичээл устгах үед алдаа гарлаа.");
-    }
-  }
-
-  const filteredCourses =
-    filterLevel === "ALL" ? courses : courses.filter((course) => course.level === filterLevel);
-
-  const levels = ["ALL", ...Array.from(new Set(courses.map((course) => course.level)))];
-
-  async function onCreateCourse(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    const title = courseForm.title.trim();
-    const description = courseForm.description.trim();
-    const level = courseForm.level.trim();
-    const instructorId = courseForm.instructorId.trim();
-    const price = Number(courseForm.price);
-
-    if (!title || !description || !level || !instructorId) {
-      setError("Хичээлийн бүх талбарыг бөглөнө үү.");
-      return;
-    }
-
-    if (Number.isNaN(price) || price < 0) {
-      setError("Үнэ нь 0-ээс их эсвэл тэнцүү тоо байна.");
-      return;
-    }
-
-    setSubmittingCourse(true);
-
-    try {
-      await createCourse({ title, description, level, price, instructorId });
-      setSuccess("Хичээлийг амжилттай үүсгэлээ.");
-      setCourseForm(initialCourseForm);
-      await loadCourses();
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Хичээл үүсгэх үед алдаа гарлаа.");
-    } finally {
-      setSubmittingCourse(false);
+      await api.deleteCourse(courseId);
+      mutateCourses();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Хичээл устгах үед алдаа гарлаа.");
     }
   }
 
   async function onAddLesson(courseId: string, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
-    setSuccess(null);
-
     const lesson = lessonForms[courseId] ?? { title: "", durationMinutes: "" };
     const title = lesson.title.trim();
     const durationMinutes = Number(lesson.durationMinutes);
 
-    if (!title) {
-      setError("Хичээлийн сэдвийн нэр шаардлагатай.");
-      return;
-    }
-
-    if (Number.isNaN(durationMinutes) || durationMinutes <= 0) {
-      setError("Хугацаа 0-ээс их байх ёстой.");
+    if (!title || Number.isNaN(durationMinutes) || durationMinutes <= 0) {
+      alert("Сэдвийн нэр болон зөв хугацаа оруулна уу.");
       return;
     }
 
     setSubmittingLessonFor(courseId);
-
     try {
-      await addLesson(courseId, { title, durationMinutes });
-      setSuccess("Сэдвийг амжилттай нэмлээ.");
-      setLessonForms((prev) => ({
-        ...prev,
-        [courseId]: { title: "", durationMinutes: "" },
-      }));
-      await loadCourses();
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Сэдэв нэмэх үед алдаа гарлаа.");
+      await api.addLesson(courseId, { title, durationMinutes });
+      setLessonForms((prev) => ({ ...prev, [courseId]: { title: "", durationMinutes: "" } }));
+      mutateCourses();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Сэдэв нэмэх үед алдаа гарлаа.");
     } finally {
       setSubmittingLessonFor(null);
     }
   }
 
   return (
-    <section className="space-y-6">
-      <PageHeader
-        title="Хичээлүүд"
-        description="Хичээлүүдийг харах, багш эрхтэй хэрэглэгч нэмэлт удирдлага хийнэ."
-      />
+    <section className="animate-fade-in-up space-y-6 py-2">
+      <PageHeader title="Хичээлүүд 📚" description="Хичээлүүдийг харах, багш эрхтэй хэрэглэгч нэмэлт удирдлага хийнэ." />
 
       <div className="paper p-5">
-        <label className="flex flex-col gap-1 text-sm text-slate-700 sm:max-w-xs">
-          Түвшнээр шүүх
+        <div className="sm:max-w-xs space-y-1">
+          <label htmlFor="filter-level" className="block text-sm font-bold text-slate-300">Түвшнээр шүүх 🔍</label>
           <select
+            id="filter-level"
             value={filterLevel}
-            onChange={(event) => setFilterLevel(event.target.value)}
+            onChange={(event) => { setFilterLevel(event.target.value); setPage(0); }}
             className="field"
           >
             {levels.map((level) => (
-              <option key={level} value={level}>
-                {level === "ALL" ? "Бүгд" : level}
-              </option>
+              <option key={level} value={level}>{level === "ALL" ? "Бүгд" : level}</option>
             ))}
           </select>
-        </label>
-      </div>
-
-      {user?.role === "TEACHER" ? (
-      <div className="paper p-5">
-        <h2 className="section-title text-lg font-semibold">
-          Хичээл Үүсгэх
-        </h2>
-        <form onSubmit={onCreateCourse} className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input
-            type="text"
-            placeholder="Хичээлийн нэр"
-            value={courseForm.title}
-            onChange={(event) =>
-              setCourseForm((prev) => ({ ...prev, title: event.target.value }))
-            }
-            className="field"
-          />
-          <input
-            type="text"
-            placeholder="Түвшин (BEGINNER, INTERMEDIATE...)"
-            value={courseForm.level}
-            onChange={(event) =>
-              setCourseForm((prev) => ({ ...prev, level: event.target.value }))
-            }
-            className="field"
-          />
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="Үнэ"
-            value={courseForm.price}
-            onChange={(event) =>
-              setCourseForm((prev) => ({ ...prev, price: event.target.value }))
-            }
-            className="field"
-          />
-          <label className="flex flex-col gap-1 text-sm text-slate-700">
-            Багш
-            <select
-              value={courseForm.instructorId}
-              onChange={(event) =>
-                setCourseForm((prev) => ({ ...prev, instructorId: event.target.value }))
-              }
-              className="field"
-            >
-              {instructors.map((instructor) => (
-                <option key={instructor.id} value={instructor.id}>
-                  {instructor.fullName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <textarea
-            placeholder="Тайлбар"
-            value={courseForm.description}
-            onChange={(event) =>
-              setCourseForm((prev) => ({ ...prev, description: event.target.value }))
-            }
-            className="field sm:col-span-2"
-            rows={3}
-          />
-          <button
-            type="submit"
-            disabled={submittingCourse}
-            className="btn-primary w-fit"
-          >
-            {submittingCourse ? "Үүсгэж байна..." : "Хичээл Үүсгэх"}
-          </button>
-        </form>
-        <div className="mt-3 space-y-2">
-          {error ? <StatusMessage type="error" message={error} /> : null}
-          {success ? <StatusMessage type="success" message={success} /> : null}
         </div>
       </div>
-      ) : null}
+
+      {user?.role === "TEACHER" && <CourseForm onSuccess={() => mutateCourses()} />}
 
       <div className="space-y-4">
         <h2 className="section-title text-lg font-semibold">
           Хичээлийн Жагсаалт
+          {coursesData ? <span className="ml-2 badge badge--neutral">{coursesData.totalElements}</span> : null}
         </h2>
-        {loading ? <LoadingBlock label="Хичээлүүдийг ачаалж байна..." /> : null}
-        {!loading && filteredCourses.length === 0 ? (
-          <div className="paper muted-copy p-4 text-sm">
-            Одоогоор хичээл бүртгэгдээгүй байна.
-          </div>
-        ) : null}
-        {!loading &&
-          filteredCourses.map((course) => {
-            const lessonForm = lessonForms[course.id] ?? {
-              title: "",
-              durationMinutes: "",
-            };
-            const instructor = instructors.find((item) => item.id === course.instructorId);
+        
+        {loadingCourses && <LoadingBlock label="Хичээлүүдийг ачаалж байна..." />}
+        {coursesError && <StatusMessage type="error" message="Хичээл татахад алдаа гарлаа." />}
+        
+        {!loadingCourses && courses.length === 0 && (
+          <div className="paper muted-copy p-5 text-sm">Одоогоор хичээл бүртгэгдээгүй байна.</div>
+        )}
 
-            return (
-              <article
-                key={course.id}
-                className="paper p-5"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="section-title text-lg font-semibold">
-                    {course.title}
-                  </h3>
-                  <span className="rounded-full bg-slate-200/60 px-2.5 py-1 text-xs font-medium text-slate-700">
-                    {course.lessons.length} сэдэв
-                  </span>
-                </div>
-                <p className="muted-copy mt-2 text-sm">{course.description}</p>
-                <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
-                  <p>
-                    <span className="font-medium">Түвшин:</span> {course.level}
-                  </p>
-                  <p>
-                    <span className="font-medium">Үнэ:</span> ${course.price.toFixed(2)}
-                  </p>
-                  <p>
-                    <span className="font-medium">Багш:</span> {instructor?.fullName ?? course.instructorId}
-                  </p>
-                </div>
+        {!loadingCourses && courses.map((course) => {
+          const lessonForm = lessonForms[course.id] ?? { title: "", durationMinutes: "" };
+          const instructor = instructors.find((item) => item.id === course.instructorId);
 
-                <div className="mt-4">
-                  <h4 className="font-medium text-slate-900">Сэдвүүд</h4>
-                  {course.lessons.length === 0 ? (
-                    <p className="muted-copy mt-2 text-sm">Сэдэв нэмэгдээгүй байна.</p>
-                  ) : (
-                    <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                      {course.lessons.map((lesson, index) => (
-                        <li
-                          key={`${course.id}-${lesson.title}-${index}`}
-                          className="rounded-lg bg-slate-100/80 px-3 py-2"
-                        >
-                          {lesson.title} ({lesson.durationMinutes} мин)
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+          return (
+            <article key={course.id} className="paper p-5 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="section-title text-xl font-bold text-white">{course.title}</h3>
+                <span className="badge badge--neutral">{course.lessons.length} сэдэв</span>
+              </div>
+              <p className="muted-copy mt-2 text-sm leading-relaxed">{course.description}</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                <span className="badge badge--accent">{course.level}</span>
+                <span className="text-slate-300"><span className="font-bold text-white">Үнэ:</span> ${course.price.toFixed(2)}</span>
+                <span className="text-slate-300"><span className="font-bold text-white">Багш:</span> {instructor?.fullName ?? course.instructorId}</span>
+              </div>
 
-                {user?.role === "TEACHER" ? (
-                  <>
-                    <form
-                      onSubmit={(event) => void onAddLesson(course.id, event)}
-                      className="mt-4 flex flex-col gap-2 sm:flex-row"
-                    >
-                      <input
-                        type="text"
-                        placeholder="Сэдвийн нэр"
-                        value={lessonForm.title}
-                        onChange={(event) =>
-                          setLessonForms((prev) => ({
-                            ...prev,
-                            [course.id]: {
-                              ...lessonForm,
-                              title: event.target.value,
-                            },
-                          }))
-                        }
-                        className="field"
-                      />
-                      <input
-                        type="number"
-                        min={1}
-                        placeholder="Хугацаа (минут)"
-                        value={lessonForm.durationMinutes}
-                        onChange={(event) =>
-                          setLessonForms((prev) => ({
-                            ...prev,
-                            [course.id]: {
-                              ...lessonForm,
-                              durationMinutes: event.target.value,
-                            },
-                          }))
-                        }
-                        className="field"
-                      />
-                      <button
-                        type="submit"
-                        disabled={submittingLessonFor === course.id}
-                        className="btn-secondary"
-                      >
-                        {submittingLessonFor === course.id ? "Нэмж байна..." : "Сэдэв Нэмэх"}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => void onDeleteCourse(course.id)}
-                      >
-                        Устгах
-                      </button>
-                    </form>
-                  </>
-                ) : null}
-              </article>
-            );
-          })}
+              <div className="mt-4">
+                <h4 className="text-sm font-bold text-white">Сэдвүүд 📖</h4>
+                {course.lessons.length === 0 ? (
+                  <p className="muted-copy mt-2 text-sm">Сэдэв нэмэгдээгүй байна.</p>
+                ) : (
+                  <ul className="mt-2 space-y-1.5">
+                    {course.lessons.map((lesson, index) => (
+                      <li key={`${course.id}-${index}`} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm border border-white/10 hover:bg-white/10 transition-colors">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--brand-blue)] text-[0.65rem] font-bold text-white border-2 border-black">{index + 1}</span>
+                        <span className="flex-1 text-slate-200">{lesson.title}</span>
+                        <span className="text-xs text-slate-400">{lesson.durationMinutes} мин</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {user?.role === "TEACHER" && (
+                <div className="mt-4 border-t border-amber-900/10 pt-4">
+                  <form onSubmit={(event) => void onAddLesson(course.id, event)} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div className="flex-1 space-y-1">
+                      <label className="block text-xs font-bold text-slate-400">Сэдвийн нэр</label>
+                      <input type="text" placeholder="Шинэ сэдэв..." value={lessonForm.title} onChange={(e) => setLessonForms((prev) => ({ ...prev, [course.id]: { ...lessonForm, title: e.target.value } }))} className="field" />
+                    </div>
+                    <div className="w-full sm:w-32 space-y-1">
+                      <label className="block text-xs font-bold text-slate-400">Хугацаа (мин)</label>
+                      <input type="number" min={1} placeholder="45" value={lessonForm.durationMinutes} onChange={(e) => setLessonForms((prev) => ({ ...prev, [course.id]: { ...lessonForm, durationMinutes: e.target.value } }))} className="field" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={submittingLessonFor === course.id} className="btn-secondary">{submittingLessonFor === course.id ? "..." : "Сэдэв Нэмэх"}</button>
+                      <button type="button" className="btn-danger" onClick={() => void onDeleteCourse(course.id)}>Устгах</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </article>
+          );
+        })}
+        
+        {coursesData && (
+          <Pagination pageNo={coursesData.pageNo} totalPages={coursesData.totalPages} onPageChange={(p) => setPage(p)} />
+        )}
       </div>
     </section>
   );

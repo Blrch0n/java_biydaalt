@@ -29,8 +29,6 @@ public class DashboardService {
 
 	public DashboardStatsResponse getStats() {
 		long totalStudents = studentRepository.count();
-		long totalCourses = courseRepository.count();
-		long totalEnrollments = enrollmentRepository.count();
 
 		List<Enrollment> enrollments = enrollmentRepository.findAll();
 		double averageProgress = enrollments.stream()
@@ -51,8 +49,8 @@ public class DashboardService {
 
 		return new DashboardStatsResponse(
 				totalStudents,
-				totalCourses,
-				totalEnrollments,
+				courses.size(),
+				enrollments.size(),
 				Math.round(averageProgress * 100.0) / 100.0,
 				topTitle,
 				topCount

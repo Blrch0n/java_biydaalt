@@ -1,76 +1,76 @@
 package com.school.onlinelearning.model;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/**
+ * Represents a student enrolled in the system.
+ *
+ * OOP Pillars demonstrated:
+ *   - INHERITANCE   : extends Person, inheriting id, userId, fullName, email
+ *   - ENCAPSULATION : batch field is private with public getter/setter
+ *   - POLYMORPHISM  : overrides the abstract describe() from Person with
+ *                     student-specific content
+ */
 @Document(collection = "students")
-public class Student {
+public class Student extends Person implements Describable {
 
-	@Id
-	private String id;
+    @NotBlank(message = "Batch is required")
+    private String batch;
 
-	private String userId;
+    private int xp = 0; // Gamification points
 
-	@NotBlank(message = "Full name is required")
-	private String fullName;
+    // ------------------------------------------------------------------ //
+    //  Constructors
+    // ------------------------------------------------------------------ //
 
-	@NotBlank(message = "Email is required")
-	@Email(message = "Email must be valid")
-	private String email;
+    public Student() {
+        super();
+    }
 
-	@NotBlank(message = "Batch is required")
-	private String batch;
+    public Student(String id, String userId, String fullName, String email, String batch) {
+        super(id, userId, fullName, email);
+        this.batch = batch;
+    }
 
-	public Student() {
-	}
+    // ------------------------------------------------------------------ //
+    //  Polymorphism — overrides the abstract describe() from Person
+    // ------------------------------------------------------------------ //
 
-	public Student(String id, String userId, String fullName, String email, String batch) {
-		this.id = id;
-		this.userId = userId;
-		this.fullName = fullName;
-		this.email = email;
-		this.batch = batch;
-	}
+    /**
+     * Returns a student-specific description.
+     * Demonstrates POLYMORPHISM: the same describe() contract defined in
+     * Person is fulfilled here with student-specific content.
+     */
+    @Override
+    public String describe() {
+        return "Student [" + getFullName() + "] from batch " + batch
+                + " | email: " + getEmail();
+    }
 
-	public String getId() {
-		return id;
-	}
+    @Override
+    public String toString() {
+        return "Student{id='" + getId() + "', fullName='" + getFullName()
+                + "', email='" + getEmail() + "', batch='" + batch + "'}";
+    }
 
-	public void setId(String id) {
-		this.id = id;
-	}
+    // ------------------------------------------------------------------ //
+    //  Getters & Setters  (Encapsulation)
+    // ------------------------------------------------------------------ //
 
-	public String getUserId() {
-		return userId;
-	}
+    public String getBatch() {
+        return batch;
+    }
 
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
+    public void setBatch(String batch) {
+        this.batch = batch;
+    }
 
-	public String getFullName() {
-		return fullName;
-	}
+    public int getXp() {
+        return xp;
+    }
 
-	public void setFullName(String fullName) {
-		this.fullName = fullName;
-	}
-
-	public String getEmail() {
-		return email;
-	}
-
-	public void setEmail(String email) {
-		this.email = email;
-	}
-
-	public String getBatch() {
-		return batch;
-	}
-
-	public void setBatch(String batch) {
-		this.batch = batch;
-	}
+    public void setXp(int xp) {
+        this.xp = xp;
+    }
 }

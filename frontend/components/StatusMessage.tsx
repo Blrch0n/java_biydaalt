@@ -4,12 +4,20 @@ type StatusMessageProps = {
 };
 
 export function StatusMessage({ type, message }: StatusMessageProps) {
-  const classes =
-    type === "success"
-      ? "border border-emerald-700/20 bg-emerald-50 text-emerald-800"
-      : "border border-rose-800/20 bg-rose-50 text-rose-800";
+  const isSuccess = type === "success";
 
   return (
-    <div className={`rounded-xl px-3 py-2 text-sm ${classes}`}>{message}</div>
+    <div
+      className={`relative flex items-start gap-3 rounded-md px-4 py-3 text-sm leading-relaxed border-3 border-black shadow-[4px_4px_0px_0px_#111] font-bold ${
+        isSuccess
+          ? "bg-[var(--brand-green)] text-white"
+          : "bg-[var(--brand-red)] text-white"
+      }`}
+    >
+      <span className="mt-0.5 flex-shrink-0 text-base" aria-hidden="true">
+        {isSuccess ? "✅" : "❌"}
+      </span>
+      <span>{message}</span>
+    </div>
   );
 }

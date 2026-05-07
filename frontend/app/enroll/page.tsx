@@ -5,7 +5,7 @@ import { LoadingBlock } from "@/components/LoadingBlock";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusMessage } from "@/components/StatusMessage";
 import { useAuth } from "@/context/AuthContext";
-import { createEnrollment, getCourses, getStudents } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Course, Student } from "@/types";
 
 export default function EnrollPage() {
@@ -25,10 +25,13 @@ export default function EnrollPage() {
     setLoading(true);
 
     try {
-      const [studentsData, coursesData] = await Promise.all([
-        getStudents(),
-        getCourses(),
+      const [studentsRes, coursesRes] = await Promise.all([
+        api.getStudents(0, 100),
+        api.getCourses(0, 100),
       ]);
+
+      const studentsData = studentsRes.content || [];
+      const coursesData = coursesRes.content || [];
 
       setStudents(studentsData);
       setCourses(coursesData);
@@ -76,12 +79,13 @@ export default function EnrollPage() {
     setSubmitting(true);
 
     try {
-      await createEnrollment({
+      await api.createEnrollment({
         studentId,
         courseId,
         progress: parsedProgress,
       });
       setSuccess("Элсэлтийг амжилттай үүсгэлээ.");
+      setTimeout(() => setSuccess(null), 3000);
       setProgress("0");
     } catch (submitError) {
       setError(
@@ -93,9 +97,9 @@ export default function EnrollPage() {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="animate-fade-in-up space-y-6 py-2">
       <PageHeader
-        title="Оюутан Бүртгэх"
+        title="Оюутан Бүртгэх 📝"
         description="Оюутан болон хичээл сонгож шинэ элсэлт үүсгэнэ."
       />
 
@@ -109,12 +113,16 @@ export default function EnrollPage() {
         <LoadingBlock label="Оюутан, хичээлийн мэдээлэл ачаалж байна..." />
       ) : null}
 
-      {!loading && user?.role === "TEACHER" ? (
-        <div className="paper p-5">
-          <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm text-slate-700">
-              Оюутан
+      {(!loading && user?.role === "TEACHER") ? (
+        <div className="paper p-5 sm:p-6">
+          <h2 className="section-title text-xl font-bold text-white mb-4">Элсэлт Үүсгэх 🚀</h2>
+          <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label htmlFor="enroll-student" className="block text-sm font-bold text-slate-300">
+                Оюутан
+              </label>
               <select
+                id="enroll-student"
                 value={studentId}
                 onChange={(event) => setStudentId(event.target.value)}
                 className="field"
@@ -125,11 +133,14 @@ export default function EnrollPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
 
-            <label className="flex flex-col gap-1 text-sm text-slate-700">
-              Хичээл
+            <div className="space-y-1">
+              <label htmlFor="enroll-course" className="block text-sm font-bold text-slate-300">
+                Хичээл
+              </label>
               <select
+                id="enroll-course"
                 value={courseId}
                 onChange={(event) => setCourseId(event.target.value)}
                 className="field"
@@ -140,11 +151,14 @@ export default function EnrollPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
 
-            <label className="flex flex-col gap-1 text-sm text-slate-700 sm:col-span-2">
-              Эхний Ахиц (заавал биш)
+            <div className="space-y-1 sm:col-span-2 sm:max-w-xs">
+              <label htmlFor="enroll-progress" className="block text-sm font-bold text-slate-300">
+                Эхний Ахиц (%)
+              </label>
               <input
+                id="enroll-progress"
                 type="number"
                 min={0}
                 max={100}
@@ -152,24 +166,26 @@ export default function EnrollPage() {
                 onChange={(event) => setProgress(event.target.value)}
                 className="field"
               />
-            </label>
+            </div>
 
-            <button
-              type="submit"
-              disabled={submitting || students.length === 0 || courses.length === 0}
-              className="btn-primary w-fit"
-            >
-              {submitting ? "Бүртгэж байна..." : "Оюутан Бүртгэх"}
-            </button>
+            <div className="flex items-end sm:col-span-2">
+              <button
+                type="submit"
+                disabled={submitting || students.length === 0 || courses.length === 0}
+                className="btn-primary"
+              >
+                {submitting ? "Бүртгэж байна..." : "Оюутан Бүртгэх"}
+              </button>
+            </div>
           </form>
 
           {students.length === 0 || courses.length === 0 ? (
-            <p className="muted-copy mt-3 text-sm">
+            <p className="muted-copy mt-4 text-sm">
               Бүртгэл хийхийн өмнө дор хаяж нэг оюутан, нэг хичээл байх шаардлагатай.
             </p>
           ) : null}
 
-          <div className="mt-3 space-y-2">
+          <div className="mt-4 space-y-2">
             {error ? <StatusMessage type="error" message={error} /> : null}
             {success ? <StatusMessage type="success" message={success} /> : null}
           </div>
